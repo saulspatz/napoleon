@@ -1,2 +1,2 @@
 # napoleon
-Napoleon at St. Helena Solitaire
+Napoleon at St. Helena (Forty Thieves) Solitaire
