@@ -55,6 +55,23 @@ class View:
         root.title("Napoleon at St. Helena Solitaire")
         self.menu = tk.Menu(root)         # parent constructs actual menu         
         root.config(menu=self.menu)   
+        
+        status = self.makeStatus()
+        canvas = self.canvas = tk.Canvas(root, bg=BACKGROUND, cursor=DEFAULT_CURSOR, **kwargs)
+        status.pack(expand=tk.NO, fill = tk.X, side=tk.BOTTOM)
+        canvas.pack()
+        self.loadImages()
+        self.createCards()
+        self.makePiles(width, height)
+        canvas.tag_bind("card", '<ButtonPress-1>', self.onClick)
+        canvas.bind('<B1-Motion>', self.drag)
+        canvas.bind('<ButtonRelease-1>', self.onDrop)
+        canvas.create_text(width, height, text = "'YOU WIN",
+                            fill = BACKGROUND, font=("Times", "32", "bold"), 
+                            tag = 'winText', anchor=tk.CENTER)
+        self.show()
+        
+    def makePiles(self, width, height):
         self.tableau = []           # NW corners of the tableau piles
         self.foundations = []   # NW corners of the foundation piles
         x = MARGIN
@@ -79,27 +96,21 @@ class View:
         self.grabPiles = [self.waste, self.stock]  # reflects model.grabPiles
         self.grabPiles.extend(self.tableau)
         self.dropPiles = [self.waste] + self.tableau + self.foundations
-        
-        status = self.makeStatus()
-        canvas = self.canvas = tk.Canvas(root, bg=BACKGROUND, cursor=DEFAULT_CURSOR, **kwargs)
-        status.pack(expand=tk.NO, fill = tk.X, side=tk.BOTTOM)
-        canvas.pack()
-        self.loadImages()
-        self.createCards()
-        canvas.tag_bind("card", '<ButtonPress-1>', self.onClick)
-        canvas.tag_bind("card", '<Double-Button-1>', self.onDoubleClick)
-        canvas.bind('<B1-Motion>', self.drag)
-        canvas.bind('<ButtonRelease-1>', self.onDrop)
+        canvas = self.canvas
         for w in self.tableau:
             canvas.create_rectangle(w[0], w[1], w[0]+CARDWIDTH, w[1]+CARDHEIGHT, outline = OUTLINE)    
         for f in self.foundations:
             canvas.create_rectangle(f[0], f[1], f[0]+CARDWIDTH, f[1]+CARDHEIGHT, outline = OUTLINE)
-        for w in self.waste, self.stock:
-            canvas.create_rectangle(w[0], w[1], w[0]+CARDWIDTH, w[1]+CARDHEIGHT, outline = OUTLINE) 
-        canvas.create_text(self.foundations[0][0], self.foundations[0][1]+CARDHEIGHT, 
-                            text = "'The game is done! I've won! I've won!'\nQuoth she, and whistles thrice.",
-                            fill = BACKGROUND, font=("Times", "32", "bold"), tag = 'winText', anchor=tk.NW)
-        self.show()
+        w = self.waste
+        canvas.create_rectangle(w[0], w[1], w[0]+CARDWIDTH, w[1]+CARDHEIGHT, outline = OUTLINE) 
+        w = self.stock
+        canvas.create_rectangle(w[0], w[1], w[0]+CARDWIDTH, w[1]+CARDHEIGHT, 
+                                outline = OUTLINE, fill = 'orange', tag = 'stock')         
+        canvas.create_text(w[0]+CARDWIDTH//2, w[1]+CARDHEIGHT//2,
+                           text='Click\nfor\nPass 2', fill = 'Black', anchor=tk.CENTER, font = ('Helvetica', '20', 'normal'),
+                           tags = ('stock', 'pass2Text'))
+        canvas.tag_bind('stock', '<ButtonRelease-1>', self.turnStock)
+        
         
     def makeStatus(self):
         status = tk.Frame(self.root, bg = STATUS_BG) 
@@ -170,7 +181,7 @@ class View:
     def showStatus(self):
         model = self.model
         self.games.configure(text='Games %d'%model.games)
-        self.wins.configure(text='Wins %d'%model.games)
+        self.wins.configure(text='Wins %d'%model.wins)
         self.passNumber.configure(text='Pass %d'%model.passNumber)
         self.wasteCards.configure(text='Waste %d'%len(model.waste))
         self.tableauCards.configure(text='Tableau %d'%sum(len(t) for t in model.tableau))
@@ -187,7 +198,6 @@ class View:
         color = CELEBRATE if model.win() else BACKGROUND
         canvas.itemconfigure('winText', fill=color)
         self.showStatus()
-
 
     def dealUp(self):
         self.model.dealUp()
@@ -251,43 +261,6 @@ class View:
         selection = model.grab(mgp, idx)
         self.grab(selection, vgp, event.x, event.y)  
 
-    def onDoubleClick(self, event):
-        '''
-        If the user double clicks a card that is part of a complete suit,
-        the suit will be moved to the first available foundation pile.
-        '''
-        model = self.model
-        canvas = self.canvas
-        tag = [t for t in canvas.gettags('current') if t.startswith('code')][0]
-        code = int(tag[4:])             # code of the card clicked
-        for k, w in enumerate(model.tableau):
-            idx = w.find(code)
-            if idx != -1:
-                break
-        else:       # loop else
-            return 
-        model.completeSuit(k, idx)
-        self.show()
-
-    def scroll(self, event):
-        '''
-        Use the mouse wheel to scroll the canvas.
-        If we are dragging cards, they must be moved in the same direction
-        as the canvas scrolls, or the cursor will become separated from the
-        cards being dragged.  
-        '''
-        canvas = self.canvas
-        lo, hi = canvas.yview()
-        height = int(canvas['scrollregion'].split()[3])
-        if event.num == 5 or event.delta < 0:       
-            n = 1
-        elif event.num == 4 or event.delta > 0:     
-            n = -1
-        canvas.yview_scroll(n, tk.UNITS)
-        lo2, hi2 = canvas.yview()
-        canvas.move('floating', 0, (hi2-hi) * height)
-
-
     def onDrop(self, event):
         '''
         Drop the selected cards.  In order to recognize the destination pile,
@@ -342,9 +315,11 @@ class View:
     def completeMove(self):
         self.show()
         self.canvas.dtag('floating', 'floating')
+        
+    def turnStock(self, event):
+        canvas = self.canvas
+        self.model.nextPass()
+        canvas.tag_unbind('stock', '<ButtonRelease-1>')
+        canvas.itemconfigure('pass2Text', fill='orange')
+        self.show()
  
-
-
-
-
-

@@ -66,9 +66,6 @@ class Napoleon:
         top = self.view.menu
         top.add_command(label='Help', command = self.showHelp)  
 
-    def notdone(self):
-        showerror('Not implemented', 'Not yet available') 
-
     def showHelp(self):
         self.helpText.deiconify()
         self.helpText.text.see('1.0')  

@@ -259,6 +259,7 @@ class Model:
             card = self.stock.pop()
             self.tableau[n%10].add(card)
         self.flipTop()   # turn top card of stock face up
+        self.games += 1
 
     def grab(self, pile, idx):
         '''
@@ -327,9 +328,13 @@ class Model:
         assert(self.stock.isEmpty())
         self.stock.extend(self.waste)
         self.waste.clear()
+        self.passNumber += 1
         
     def win(self):
-        return all((len(f) == 13 for f in self.foundations)) 
+        answer = all((len(f) == 13 for f in self.foundations))
+        if answer:
+            self.wins += 1
+        return answer
 
 
 
