@@ -22,15 +22,14 @@ MARGIN = 10
 OFFSET = 15
 
 BACKGROUND = '#070'
-OUTLINE = '#060'        # outline color of foundation files
+OUTLINE = 'orange'        # outline color of piles
 CELEBRATE = 'yellow'     # Color of "you won" message
 
 # Cursors
 DEFAULT_CURSOR = 'arrow'
 SELECT_CURSOR = 'hand2'
 
-STATUS_FONT = ('Helvetica', '12', 'normal')
-STATS_FONT = ('Courier', '12', 'normal')   # fixed-width font
+STATUS_FONT = ('Helvetica', '14', 'normal')
 STATUS_BG = 'gray'
 
 imageDict = {}   # hang on to images, or they may disappear!
@@ -73,11 +72,14 @@ class View:
         for k in range(5):
             self.tableau.append((x, y)) 
             y += 2*MARGIN + CARDHEIGHT 
-        x = width - 2*MARGIN - CARDWIDTH
+        x = width - 2*MARGIN - 2 * CARDWIDTH
         self.stock = (x,y)   # NW corner of stock
-        y -= 2*MARGIN - CARDHEIGHT
+        x += MARGIN + CARDWIDTH
         self.waste = (x, y) #NW corner of waste
-
+        self.grabPiles = [self.waste, self.stock]  # reflects model.grabPiles
+        self.grabPiles.extend(self.tableau)
+        self.dropPiles = [self.waste] + self.tableau + self.foundations
+        
         status = tk.Frame(root, bg = STATUS_BG)       
         self.tableauCards =  tk.Label(status, 
                                       relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
@@ -104,6 +106,8 @@ class View:
             canvas.create_rectangle(w[0], w[1], w[0]+CARDWIDTH, w[1]+CARDHEIGHT, outline = OUTLINE)    
         for f in self.foundations:
             canvas.create_rectangle(f[0], f[1], f[0]+CARDWIDTH, f[1]+CARDHEIGHT, outline = OUTLINE)
+        for w in self.waste, self.stock:
+            canvas.create_rectangle(w[0], w[1], w[0]+CARDWIDTH, w[1]+CARDHEIGHT, outline = OUTLINE) 
         canvas.create_text(self.foundations[0][0], self.foundations[0][1]+CARDHEIGHT, 
                             text = "'The game is done! I've won! I've won!'\nQuoth she, and whistles thrice.",
                             fill = BACKGROUND, font=("Times", "32", "bold"), tag = 'winText', anchor=tk.NW)
@@ -129,33 +133,34 @@ class View:
         for card in model.deck:
             c = canvas.create_image(-200, -200, image = None, anchor = tk.NW, tag = "card")
             canvas.addtag_withtag('code%d'%card.code, c)
-
-    def showtableau(self, k):
-        '''
-        Display tableau pile number k
-        '''
-        x, y = self.tableau[k]
+            
+    def showPile(self, pileView, pileModel, xOffset, yOffset):
+        x,y = pileView
         canvas = self.canvas
-        for card in self.model.tableau[k]:
+        for card in pileModel:
             tag = 'code%d'%card.code
             canvas.coords(tag, x, y)
             if card.faceUp():
                 foto = imageDict[card.rank, card.suit]
-                x += OFFSET
+                x += xOffset
+                y += yOffset
             else:
                 foto = imageDict[card.back]
-                x += OFFSET
+                x += xOffset
+                y += yOffset
             canvas.itemconfigure(tag, image = foto)
-            canvas.tag_raise(tag) 
+            canvas.tag_raise(tag)
+            
+    def showSquaredPile(self, pileView, pileModel):
+        self.showPile(pileView, pileModel, 0, 0)
 
     def show(self):
         model = self.model
         canvas = self.canvas
         self.showStock()
-        for k in range(10):
-            self.showtableau(k)
-        for k in range(8):
-            self.showFoundation(k)    
+        self.showTableaux()
+        self.showFoundations()
+        self.showWaste()
         color = CELEBRATE if model.win() else BACKGROUND
         canvas.itemconfigure('winText', fill=color)
         self.wasteCards.configure(text='Waste %d'%len(model.waste))
@@ -167,44 +172,36 @@ class View:
         self.model.dealUp()
         self.show()
 
-    def showFoundation(self, k):
-        model = self.model
-        canvas = self.canvas
-        x, y = self.foundations[k]
-        for card in model.foundations[k]:
-            tag = 'code%d'%card.code
-            canvas.itemconfigure(tag, image = imageDict[card.rank, card.suit])
-            canvas.coords(tag,x,y)
-            canvas.tag_raise(tag)
-
+    def showTableaux(self):
+        for v, m in zip(self.tableau, self.model.tableau):
+            self.showPile(v, m, OFFSET, 0)
+            
+    def showFoundations(self):
+        for v,m in zip(self.foundations, self.model.foundations):
+            self.showSquaredPile(v,m)
+            
     def showStock(self):
-        model = self.model
-        canvas = self.canvas
-        x, y = self.stock
-        for card in model.stock:
-            tag = 'code%d'%card.code
-            canvas.itemconfigure(tag, image = imageDict[card.back])
-            canvas.coords(tag,x,y)
-            canvas.tag_raise(tag)    
+        self.showSquaredPile(self.stock, self.model.stock)
+        
+    def showWaste(self):
+        self.showSquaredPile(self.waste, self.model.waste)
 
-    def grab(self, selection, k, mouseX, mouseY):
+    def grab(self, selection, pile, mouseX, mouseY):
         '''
         Grab the cards in selection.
-        k is the index of the source tableau pile.
-        Note that all the cards are face up.
         '''
         canvas = self.canvas
         if not selection:
             return
         self.mouseX, self.mouseY = mouseX, mouseY
-        west = self.tableau[k][0]
+        west = pile[0]
         for card in selection:
             tag = 'code%s'%card.code
             canvas.tag_raise(tag)
             canvas.addtag_withtag("floating", tag)
         canvas.configure(cursor=SELECT_CURSOR)
         dx = 5 if mouseX - west > 10 else -5
-        canvas.move('floating', dx, 0)
+        canvas.move('floating', dx, 5)
 
     def drag(self, event):
         try:
@@ -224,20 +221,14 @@ class View:
         canvas = self.canvas
         tag = [t for t in canvas.gettags('current') if t.startswith('code')][0]
         code = int(tag[4:])             # code of the card clicked
-        if model.stock.find(code) != -1:
-            if model.canDeal():
-                self.dealUp()
-                return
-            else:
-                self.cannotDeal()
-        for k, w in enumerate(model.tableau):
-            idx = w.find(code)
+        for mgp, vgp in zip(model.grabPiles, self.grabPiles):
+            idx = mgp.find(code)
             if idx != -1:
                 break
         else:       # loop else
             return
-        selection = model.grab(k, idx)
-        self.grab(selection, k, event.x, event.y)  
+        selection = model.grab(mgp, idx)
+        self.grab(selection, vgp, event.x, event.y)  
 
     def onDoubleClick(self, event):
         '''
@@ -278,12 +269,10 @@ class View:
 
     def onDrop(self, event):
         '''
-        Drop the selected cards.  In order to recognize the destination tableau pile,
-        the top of the cards being dragged must be below the bottom edge of
-        the foundation piles, and the cards being dragged must overlap a tableau pile.
-        If they overlap two tableau piles, both are considered, the one with more
-        overlap first.  If that is not a legal drop target then the other tableau pile 
-        is considered.
+        Drop the selected cards.  In order to recognize the destination pile,
+        the cards being dragged must overlap the pile.
+        If they overlap more than one pile, all are considered in decreasing order
+        of overlap.  The first legal drop target encountered is accepted.
         '''
         model = self.model
         if not model.moving():
@@ -295,57 +284,43 @@ class View:
             west, north, east, south = canvas.bbox(tk.CURRENT)
         except TypeError:
             pass                      # how can bbox(tk.CURRENT) give None?
-
-        def findDestInArray(seq):   
-            for k, w in enumerate(seq):
-                left = w[0]       
-                right = left + CARDWIDTH - 1
+        
+        def findDest(): 
+            overlaps = []
+            for vdp, mdp in zip(self.dropPiles, model.dropPiles):
+                left = vdp[0] 
+                top = vdp[1]
+                cards = len(mdp) if mdp in model.tableau else 1
+                right = left + (cards-1)*OFFSET + CARDWIDTH - 1
+                bottom = top + CARDHEIGHT - 1
                 if not (left <= west <= right or left <= east <= right ):
                     continue
-                overlap1 = min(right, east) - max(left, west)
-                try:
-                    left = seq[k+1][0]
-                except IndexError:
-                    return (k, )
-                right = left + CARDWIDTH - 1
-                overlap2 = min(right, east) - max(left, west)
-                if overlap2 <= 0:
-                    return (k, )
-                if overlap1 > overlap2:
-                    return (k, k+1)
-                return (k+1, k)
-            return tuple() 
-
-        if north > self.foundations[0][1]+CARDHEIGHT:
-            for pile in findDestInArray(self.tableau):
-                if pile == model.moveOrigin or not model.canDrop(pile):
+                if not (top <= north <= bottom or top <= south <= bottom):
                     continue
-                self.completeMove(pile)
+                overlapX = min(right, east) - max(left, west)
+                overlapY = min(south, bottom) - max(north, top)
+                overlap = overlapX * overlapY
+                overlaps.append((overlap, mdp))
+            answer =  [s[1] for s in sorted(overlaps, reverse=True)]  
+            return answer
+        
+        for pile in findDest():
+            if model.canDrop(pile):
+                model.completeMove(pile)
+                self.completeMove()
                 break
-            else:   # loop else
-                self.abortMove()
-        else:
-            #check for drop on foundation pile
-            for pile in findDestInArray(self.foundations):
-                if model.canDrop(pile):
-                    self.suitToFoundation(pile)
-                    break
-            else:     # loop else
-                self.abortMove()
-
+        else:           # loop else
+            self.abortMove()
         self.show()
 
     def abortMove(self):
         self.model.abortMove()
-        self.showtableau(self.model.moveOrigin)
+        self.show()
         self.canvas.dtag('floating', 'floating')
 
-    def completeMove(self, dest):
-        model = self.model
-        source = model.moveOrigin
-        model.selectionTotableau(dest)
+    def completeMove(self):
         self.show()
-        self.dtag('floating', 'floating')
+        self.canvas.dtag('floating', 'floating')
 
     def suitToFoundation(self, dest):
         model = self.model

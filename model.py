@@ -125,8 +125,9 @@ class FoundationPile(Stack):
         return True    
         
 class WastePile(Stack):
-    def __init__(self):
+    def __init__(self, parent):
         super().__init__()
+        self.parent = parent # the model
         
     def add(self, card):
         Stack.add(self, card, True)      
@@ -134,9 +135,13 @@ class WastePile(Stack):
     def canSelect(self, idx):
         return not self.isEmpty() and idx == len(self)-1   
     
-    def drop(self, _a, _b):
-        return False
-    
+    def drop(self, cards, _):
+        model = self.parent
+        if model.moveOrigin != model.stock:
+            return False
+        self.extend(cards)
+        return True
+            
 class StockPile(Stack):
     def __init__(self):
         super().__init__()
@@ -148,7 +153,7 @@ class StockPile(Stack):
         return not self.isEmpty() and idx == len(self)-1   
     
     def drop(self, _a, _b):
-        return False    
+        return False
     
 class Card:
     '''
@@ -215,13 +220,16 @@ class Model:
         self.selection = []
         self.createCards()
         self.stock = StockPile()
-        self.waste = WastePile()
+        self.waste = WastePile(self)
         self.foundations = []
         for k in range(8):
             self.foundations.append(FoundationPile())
         self.tableau = []
         for k in range(10):
             self.tableau.append(TableauPile()) 
+        self.grabPiles = [self.waste, self.stock]  # piles from which cards can be moved 
+        self.grabPiles.extend(self.tableau)
+        self.dropPiles = [self.waste] + self.tableau + self.foundations # drop on these piles
         self.deal()
 
     def shuffle(self):
@@ -250,25 +258,17 @@ class Model:
             self.tableau[n%10].add(card)
         self.flipTop()   # turn top card of stock face up
 
-    def grab(self, k, idx):
+    def grab(self, pile, idx):
         '''
         Initiate a move to a tableau or foundation pile
-        Grab card idx and those on top of it from tableau pile k
-        (k = 18 for stock and k = 19 for waste)
         Return code numbers of the selected cards.
         We need to remember the data, since the move may fail.
         '''
-        if k == STOCK:
-            w = self.stock
-        elif k == WASTE:
-            w = self.waste
-        else:
-            w = self.tableau[k]
-        if not w.canSelect(idx):
+        if not pile.canSelect(idx):
             return []
-        self.moveOrigin = k
+        self.moveOrigin = pile
         self.moveIndex = idx
-        self.selection = w[idx:]
+        self.selection = pile[idx:]
         return self.selection
 
     def abortMove(self):
@@ -280,29 +280,24 @@ class Model:
     def getSelected(self):
         return self.selection
 
-    def canDrop(self, k):
+    def canDrop(self, pile):
         '''
-        Can the moving cards be dropped on pile k? 
-        0 <= k < 10 indicates tableau pile
-        10 <= k < 18 indicates foundation
-        18, 19 are stock and waste piles
-        Here we implement "supermoves."  If the target pile is not empty, 
+        Can the moving cards be dropped on pile? 
+        Here we implement "supermoves."  If the target tableau pile is not empty, 
         the number of cards moved must not exceed the 2 to the number
-        of empty piles.  If the target pile is empty, the maximum is half
+        of empty piles.  If the target tableau pile is empty, the maximum is half
         that limit.
+        If the target is a foundation pile, there is no limit.
         '''
         if not self.selection:
-            return False     
-        if 0 <= k < 10:
-            dest = self.tableau[k]
-        elif 10 <= k < 18:
-            dest = self.foundation[k-10]
-        elif k in (WASTE, STOCK):
+            return False 
+        if isinstance(pile, StockPile):
             return False
+        if pile in self.tableau:
+            limit = 2 ** len([t for t in self.tableau if not t])
         else:
-            raise ValueError
-        limit = 2 ** len([t for t in tableau if not t])
-        return dest.drop(self.selection, limit)
+            limit = 13
+        return pile.drop(self.selection, limit)
 
     def completeMove(self, dest):
         '''
@@ -310,25 +305,10 @@ class Model:
         Transfer the moving cards to the destination stack.
         Turn the top card of the stock face up, if need be.
         '''
-        source = self.tableau[self.moveOrigin]
-        moving = self.selection
-        target = self.tableau[dest] if dest < 10 else self.foundations[dest-10]
-        target.extend(self.selection)
+        source = self.moveOrigin
         source[:] = source[:self.moveIndex]
         self.flipTop()
         self.selection = []
-
-    def selectionToFoundation(self, dest):
-        '''
-        Complete a legal move to foundation pile
-        '''
-        self.completeMove(dest+10)
-
-    def selectionTotableau(self, dest):
-        '''
-        Complete a legal move to tableau pile
-        '''
-        self.completeMove(dest)  
 
     def flipTop(self):
         '''
