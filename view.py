@@ -80,19 +80,7 @@ class View:
         self.grabPiles.extend(self.tableau)
         self.dropPiles = [self.waste] + self.tableau + self.foundations
         
-        status = tk.Frame(root, bg = STATUS_BG)       
-        self.tableauCards =  tk.Label(status, 
-                                      relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
-        self.foundationCards =  tk.Label(status, 
-                                         relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
-        self.wasteCards = tk.Label(status, 
-                                   relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
-        self.stockCards = tk.Label(status, 
-                                   relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
-        self.tableauCards.pack(expand=tk.NO, fill = tk.NONE, side = tk.RIGHT)
-        self.foundationCards.pack(expand=tk.NO, fill = tk.NONE, side = tk.RIGHT)
-        self.wasteCards.pack(expand=tk.NO, fill = tk.NONE, side = tk.RIGHT)
-        self.stockCards.pack(expand=tk.NO, fill = tk.NONE, side = tk.RIGHT)
+        status = self.makeStatus()
         canvas = self.canvas = tk.Canvas(root, bg=BACKGROUND, cursor=DEFAULT_CURSOR, **kwargs)
         status.pack(expand=tk.NO, fill = tk.X, side=tk.BOTTOM)
         canvas.pack()
@@ -112,7 +100,32 @@ class View:
                             text = "'The game is done! I've won! I've won!'\nQuoth she, and whistles thrice.",
                             fill = BACKGROUND, font=("Times", "32", "bold"), tag = 'winText', anchor=tk.NW)
         self.show()
-
+        
+    def makeStatus(self):
+        status = tk.Frame(self.root, bg = STATUS_BG) 
+        self.games = tk.Label(status, 
+                                     relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
+        self.wins = tk.Label(status, 
+                                     relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
+        self.passNumber =   tk.Label(status, 
+                                     relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
+        self.tableauCards =  tk.Label(status, 
+                                      relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
+        self.foundationCards =  tk.Label(status, 
+                                         relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
+        self.wasteCards = tk.Label(status, 
+                                   relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
+        self.stockCards = tk.Label(status, 
+                                   relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
+        self.games.pack(expand=tk.NO, fill = tk.NONE, side = tk.LEFT) 
+        self.wins.pack(expand=tk.NO, fill = tk.NONE, side = tk.LEFT)  
+        self.passNumber.pack(expand=tk.NO, fill = tk.NONE, side = tk.RIGHT)
+        self.tableauCards.pack(expand=tk.NO, fill = tk.NONE, side = tk.RIGHT)
+        self.foundationCards.pack(expand=tk.NO, fill = tk.NONE, side = tk.RIGHT)
+        self.wasteCards.pack(expand=tk.NO, fill = tk.NONE, side = tk.RIGHT)
+        self.stockCards.pack(expand=tk.NO, fill = tk.NONE, side = tk.RIGHT) 
+        return status
+   
     def start(self):
         self.root.mainloop()
 
@@ -153,6 +166,16 @@ class View:
             
     def showSquaredPile(self, pileView, pileModel):
         self.showPile(pileView, pileModel, 0, 0)
+        
+    def showStatus(self):
+        model = self.model
+        self.games.configure(text='Games %d'%model.games)
+        self.wins.configure(text='Wins %d'%model.games)
+        self.passNumber.configure(text='Pass %d'%model.passNumber)
+        self.wasteCards.configure(text='Waste %d'%len(model.waste))
+        self.tableauCards.configure(text='Tableau %d'%sum(len(t) for t in model.tableau))
+        self.stockCards.configure(text='Stock %d'%len(model.stock))
+        self.foundationCards.configure(text='Foundation %d'%sum(len(f) for f in model.foundations))                
 
     def show(self):
         model = self.model
@@ -163,10 +186,8 @@ class View:
         self.showWaste()
         color = CELEBRATE if model.win() else BACKGROUND
         canvas.itemconfigure('winText', fill=color)
-        self.wasteCards.configure(text='Waste %d'%len(model.waste))
-        self.tableauCards.configure(text='Tableau %d'%sum(len(t) for t in model.tableau))
-        self.stockCards.configure(text='Stock %d'%len(model.stock))
-        self.foundationCards.configure(text='Foundation %d'%sum(len(f) for f in model.foundations))
+        self.showStatus()
+
 
     def dealUp(self):
         self.model.dealUp()
@@ -321,13 +342,7 @@ class View:
     def completeMove(self):
         self.show()
         self.canvas.dtag('floating', 'floating')
-
-    def suitToFoundation(self, dest):
-        model = self.model
-        source = model.moveOrigin
-        model.selectionToFoundation(dest)
-        self.show()
-        self.canvas.dtag('floating', 'floating')    
+ 
 
 
 

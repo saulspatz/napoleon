@@ -27,7 +27,14 @@ You can run through the stock at most twice.
 
 class Napoleon:
     def __init__(self):
-        self.model = Model()
+        try:
+            with open('napoleon.ini') as infile:
+                text = infile.readlines()
+                games = int(text[0].strip())
+                wins = int(text[1].strip())
+        except IOError:
+            games, wins = 0,0
+        self.model = Model(games, wins)
         self.view = View(self, self.quit, width=950, height=1000)
         self.makeHelp()
         self.makeMenu()
@@ -67,7 +74,10 @@ class Napoleon:
         self.helpText.text.see('1.0')  
         
     def saveStats(self):
-        pass
+        model = self.model
+        games, wins = model.games, model.wins
+        with open('napoleon.ini', 'w') as outfile:
+            outfile.write('%d\n%d\n'%(games, wins))
 
     def quit(self):
         self.saveStats()

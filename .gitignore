@@ -60,3 +60,10 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+
+# Wing IDE project files
+*.wpr
+*.wpu
+
+# Project-specific
+*.ini

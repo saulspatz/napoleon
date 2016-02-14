@@ -214,7 +214,9 @@ class Model:
     The top card of the stock is face-up and available for play.  
 
       '''
-    def __init__(self):
+    def __init__(self, games, wins):
+        self.games, self.wins = games, wins
+        self.passNumber=  1     # two passes allowed
         random.seed()
         self.deck = []
         self.selection = []
@@ -320,7 +322,12 @@ class Model:
                 w[-1].showFace()
         except IndexError:
             pass
-
+        
+    def nextPass(self):
+        assert(self.stock.isEmpty())
+        self.stock.extend(self.waste)
+        self.waste.clear()
+        
     def win(self):
         return all((len(f) == 13 for f in self.foundations)) 
 
