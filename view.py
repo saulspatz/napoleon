@@ -6,10 +6,8 @@ Thce canvas widget is used for both view and controller.
 '''
 import sys, os, itertools
 import tkinter as tk
+import tkinter.messagebox as tkmb
 from model import SUITNAMES, RANKNAMES, ALLRANKS, Card
-#from tkinter.messagebox import showerror
-#from utils import ScrolledCanvas
-#from tkinter.simpledialog import SimpleDialog
 
 # Constants determining the size and layout of cards piles.
 # Adjacent stacks are separated by MARGIN pixels
@@ -53,61 +51,76 @@ class View:
         height = kwargs['height']
         self.root.wm_geometry('%dx%d-10+10'%(width,height))
         root.title("Napoleon at St. Helena Solitaire")
-        self.menu = tk.Menu(root)         # parent constructs actual menu         
-        root.config(menu=self.menu)   
         
         status = self.makeStatus()
         canvas = self.canvas = tk.Canvas(root, bg=BACKGROUND, cursor=DEFAULT_CURSOR, **kwargs)
         status.pack(expand=tk.NO, fill = tk.X, side=tk.BOTTOM)
         canvas.pack()
         self.loadImages()
-        self.createCards()
+        self.createCards()      
         self.makePiles(width, height)
+        self.makeMessages(width, height)
         canvas.tag_bind("card", '<ButtonPress-1>', self.onClick)
         canvas.bind('<B1-Motion>', self.drag)
         canvas.bind('<ButtonRelease-1>', self.onDrop)
-        canvas.create_text(width, height, text = "'YOU WIN",
-                            fill = BACKGROUND, font=("Times", "32", "bold"), 
-                            tag = 'winText', anchor=tk.CENTER)
+        self.makeButtons()
+        self.hideMessages()
         self.show()
+        
+    def makeButtons(self):
+        canvas = self.canvas
+        BUTTON = 'Forest Green'
+        x = MARGIN
+        y = self.waste[1]
+        canvas.create_oval(x, y, x+6*MARGIN, y+3*MARGIN, 
+                        fill = BUTTON, outline = BUTTON, tag = 'newDeal')        
+        canvas.create_text(x+3*MARGIN, y + 3*MARGIN/2, text = 'New Deal', 
+                           fill = CELEBRATE, tag='newDeal', anchor=tk.CENTER)
+        canvas.tag_bind('newDeal', '<ButtonRelease-1>', self.newDeal)
+        x= 9*MARGIN
+        canvas.create_oval(x, y, x+6*MARGIN, y+3*MARGIN, 
+                        fill = BUTTON, outline = BUTTON, tag = 'help')        
+        canvas.create_text(x+3*MARGIN, y + 3*MARGIN/2, text = 'Help', 
+                           fill = CELEBRATE, tag='help', anchor=tk.CENTER)
+        canvas.tag_bind('help', '<ButtonRelease-1>', self.parent.showHelp)        
         
     def makePiles(self, width, height):
         self.tableau = []           # NW corners of the tableau piles
         self.foundations = []   # NW corners of the foundation piles
         x = MARGIN
-        y = 5* MARGIN        
+        y = 3* MARGIN        
         for k in range(8):
             x += MARGIN + CARDWIDTH
             self.foundations.append((x, y)) 
-        y = 7*MARGIN + CARDHEIGHT
+        y = 5*MARGIN + CARDHEIGHT
         x = MARGIN
         for k in range(5):
             self.tableau.append((x, y)) 
             y += 2*MARGIN + CARDHEIGHT
-        x = (width - CARDWIDTH)//2 - MARGIN
-        y = 7*MARGIN + CARDHEIGHT
+        x = width//2 - MARGIN
+        y = 5*MARGIN + CARDHEIGHT
         for k in range(5):
             self.tableau.append((x, y)) 
             y += 2*MARGIN + CARDHEIGHT 
-        x = width - 2*MARGIN - 2 * CARDWIDTH
+        x = width - 4*MARGIN - 2*CARDWIDTH
         self.stock = (x,y)   # NW corner of stock
-        x += MARGIN + CARDWIDTH
+        x += 2*MARGIN + CARDWIDTH
         self.waste = (x, y) #NW corner of waste
         self.grabPiles = [self.waste, self.stock]  # reflects model.grabPiles
         self.grabPiles.extend(self.tableau)
         self.dropPiles = [self.waste] + self.tableau + self.foundations
         canvas = self.canvas
         for w in self.tableau:
-            canvas.create_rectangle(w[0], w[1], w[0]+CARDWIDTH, w[1]+CARDHEIGHT, outline = OUTLINE)    
+            canvas.create_rectangle(w[0]+2, w[1]+2, w[0]+CARDWIDTH-2, w[1]+CARDHEIGHT-2, outline = OUTLINE)    
         for f in self.foundations:
-            canvas.create_rectangle(f[0], f[1], f[0]+CARDWIDTH, f[1]+CARDHEIGHT, outline = OUTLINE)
+            canvas.create_rectangle(f[0]+2, f[1]+2, f[0]+CARDWIDTH-2, f[1]+CARDHEIGHT-2, outline = OUTLINE)
         w = self.waste
-        canvas.create_rectangle(w[0], w[1], w[0]+CARDWIDTH, w[1]+CARDHEIGHT, outline = OUTLINE) 
+        canvas.create_rectangle(w[0]+2, w[1]+2, w[0]+CARDWIDTH-2, w[1]+CARDHEIGHT-2, outline = OUTLINE) 
         w = self.stock
-        canvas.create_rectangle(w[0], w[1], w[0]+CARDWIDTH, w[1]+CARDHEIGHT, 
+        canvas.create_rectangle(w[0]+2, w[1]+2, w[0]+CARDWIDTH-2, w[1]+CARDHEIGHT-2, 
                                 outline = OUTLINE, fill = 'orange', tag = 'stock')         
         canvas.create_text(w[0]+CARDWIDTH//2, w[1]+CARDHEIGHT//2,
-                           text='Click\nfor\nPass 2', fill = 'Black', anchor=tk.CENTER, font = ('Helvetica', '20', 'normal'),
+                           text='Next\nPass', fill = 'Black', anchor=tk.CENTER, font = ('Helvetica', '20', 'normal'),
                            tags = ('stock', 'pass2Text'))
         canvas.tag_bind('stock', '<ButtonRelease-1>', self.turnStock)
         
@@ -139,6 +152,50 @@ class View:
    
     def start(self):
         self.root.mainloop()
+        
+    def activateStock(self, active = True):
+        canvas = self.canvas
+        if active:
+            canvas.tag_bind('stock', '<ButtonRelease-1>', self.turnStock)
+            canvas.itemconfigure('pass2Text', fill='black') 
+        else:
+            canvas.tag_unbind('stock', '<ButtonRelease-1>')
+            canvas.itemconfigure('pass2Text', fill='orange')             
+                
+    def newDeal(self, event):
+        if not self.model.gameOver():
+            answer = tkmb.askokcancel(title='Abandon Game?', 
+                                              message= 'Game is not over.  You still have moves.',
+                                              icon = tkmb.QUESTION, 
+                                              default = tkmb.CANCEL )
+            if not answer: return   # user chose 'Cancel'
+        canvas = self.canvas
+        self.activateStock()
+        self.hideMessages()
+        self.model.deal()
+        self.show()
+        
+    def makeMessages(self, width, height):
+        canvas = self.canvas
+        canvas.create_text(width//2, height//2, text = "YOU WIN",
+                           fill = BACKGROUND, font=("Helvetica", "64", "bold"), 
+                           tag = 'winText', anchor=tk.CENTER)
+        canvas.create_text(width//2 , self.waste[1] + MARGIN,
+                           text = 'No More Moves.  Game Over.',
+                           fill = BACKGROUND, font = ('Helvetica', '32', 'bold'),
+                           tag = 'gameOver', anchor = tk.CENTER)        
+        
+    def hideMessages(self):
+        canvas =self.canvas
+        for tag in ('winText','gameOver'):
+            canvas.itemconfigure(tag, fill = BACKGROUND)
+            canvas.tag_lower(tag, 'all')
+    
+    def showMessage(self, tag):
+        canvas = self.canvas
+        canvas.itemconfigure(tag, fill=CELEBRATE)
+        canvas.tag_raise(tag, 'all')        
+        
 
     def loadImages(self):
         PhotoImage = tk.PhotoImage
@@ -189,14 +246,14 @@ class View:
         self.foundationCards.configure(text='Foundation %d'%sum(len(f) for f in model.foundations))                
 
     def show(self):
-        model = self.model
-        canvas = self.canvas
         self.showStock()
         self.showTableaux()
         self.showFoundations()
         self.showWaste()
-        color = CELEBRATE if model.win() else BACKGROUND
-        canvas.itemconfigure('winText', fill=color)
+        if self.model.win():
+            self.showMessage('winText')
+        elif self.model.gameOver():
+            self.showMessage('gameOver')
         self.showStatus()
 
     def dealUp(self):
@@ -277,14 +334,18 @@ class View:
         try:    
             west, north, east, south = canvas.bbox(tk.CURRENT)
         except TypeError:
-            pass                      # how can bbox(tk.CURRENT) give None?
+            return []                     # how can bbox(tk.CURRENT) give None?
         
         def findDest(): 
             overlaps = []
+            tableau = model.tableau
             for vdp, mdp in zip(self.dropPiles, model.dropPiles):
                 left = vdp[0] 
                 top = vdp[1]
-                cards = len(mdp) if mdp in model.tableau else 1
+                if mdp not in tableau:
+                    cards = 1
+                else:
+                    cards = max(len(mdp), 1)
                 right = left + (cards-1)*OFFSET + CARDWIDTH - 1
                 bottom = top + CARDHEIGHT - 1
                 if not (left <= west <= right or left <= east <= right ):
@@ -319,7 +380,9 @@ class View:
     def turnStock(self, event):
         canvas = self.canvas
         self.model.nextPass()
-        canvas.tag_unbind('stock', '<ButtonRelease-1>')
-        canvas.itemconfigure('pass2Text', fill='orange')
+        self.activateStock(False)
         self.show()
+        
+                
+        
  

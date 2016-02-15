@@ -38,6 +38,8 @@ class Stack(list):
         self.append(card)
         if faceUp:
             self[-1].showFace()
+        else:
+            self[-1].showBack()
 
     def isEmpty(self):
         return not self
@@ -325,9 +327,12 @@ class Model:
             pass
         
     def nextPass(self):
-        assert(self.stock.isEmpty())
-        self.stock.extend(self.waste)
-        self.waste.clear()
+        stock, waste = self.stock, self.waste
+        assert(stock.isEmpty())
+        for card in reversed(waste):
+            self.stock.add(card)
+        waste.clear()
+        self.flipTop()
         self.passNumber += 1
         
     def win(self):
@@ -335,7 +340,28 @@ class Model:
         if answer:
             self.wins += 1
         return answer
-
+    
+    def gameOver(self):
+        if self.win():
+            return True
+        if not self.stock.isEmpty():
+            return False
+        if self.passNumber == 1:
+            return False
+        tableau = self.tableau
+        foundations = self.foundations
+        if any(tab.isEmpty() for tab in tableau):
+            return False
+        for gp in (p for p in self.grabPiles if not p.isEmpty()):
+            top = gp[-1]
+            if any(top < tab[-1] for tab in tableau):
+                return False
+            if top.rank == ACE and any(f.isEmpty for f in foundations):
+                return False
+            if any(top > f[-1] for f in foundations if not f.isEmpty()):
+                return False
+        return True
+            
 
 
   
