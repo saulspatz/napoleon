@@ -309,11 +309,14 @@ class Model:
         Compete a legal move.
         Transfer the moving cards to the destination stack.
         Turn the top card of the stock face up, if need be.
+        Chack for win
         '''
         source = self.moveOrigin
         source[:] = source[:self.moveIndex]
         self.flipTop()
         self.selection = []
+        if self.win():
+            self.wins += 1
 
     def flipTop(self):
         '''
@@ -336,11 +339,8 @@ class Model:
         self.passNumber += 1
         
     def win(self):
-        answer = all((len(f) == 13 for f in self.foundations))
-        if answer:
-            self.wins += 1
-        return answer
-    
+        return all((len(f) == 13 for f in self.foundations))
+                   
     def gameOver(self):
         if self.win():
             return True
