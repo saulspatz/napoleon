@@ -218,7 +218,6 @@ class Model:
       '''
     def __init__(self, games, wins):
         self.games, self.wins = games, wins
-        self.passNumber=  1     # two passes allowed
         random.seed()
         self.deck = []
         self.selection = []
@@ -256,6 +255,7 @@ class Model:
         '''
         Deal the cards into the initial layout
         '''
+        self.passNumber=  1     # two passes allowed
         self.shuffle()
         for n in range(40):
             card = self.stock.pop()
