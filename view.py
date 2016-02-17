@@ -316,7 +316,9 @@ class View:
         else:       # loop else
             return
         selection = model.grab(mgp, idx)
-        self.grab(selection, vgp, event.x, event.y)  
+        if selection:
+            canvas.addtag_withtag('moveBase', tag)
+            self.grab(selection, vgp, event.x, event.y)  
 
     def onDrop(self, event):
         '''
@@ -332,9 +334,9 @@ class View:
         canvas.configure(cursor=DEFAULT_CURSOR)
 
         try:    
-            west, north, east, south = canvas.bbox(tk.CURRENT)
+            west, north, east, south = canvas.bbox('moveBase')
         except TypeError:
-            return []                     # how can bbox(tk.CURRENT) give None?
+            self.abortMove()                 
         
         def findDest(): 
             overlaps = []
@@ -372,10 +374,12 @@ class View:
         self.model.abortMove()
         self.show()
         self.canvas.dtag('floating', 'floating')
+        self.canvas.dtag('moveBase', 'moveBase')
 
     def completeMove(self):
         self.show()
         self.canvas.dtag('floating', 'floating')
+        self.canvas.dtag('moveBase', 'moveBase')
         
     def turnStock(self, event):
         canvas = self.canvas
