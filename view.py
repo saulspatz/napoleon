@@ -39,19 +39,22 @@ class View:
     crucial, since only canvas items tagged "card" will respond to mouse
     clicks.
     '''
-    def __init__(self, parent, quit, **kwargs):
+    def __init__(self, parent, quit, deck, **kwargs):
         # kwargs passed to Canvas
         # quit is function to call when main window is closed
+        # deck is directory with card images
         self.parent = parent          # parent is the Napoleon application
         self.model =  parent.model
         self.root = root = tk.Tk()
+        self.deck = tk.StringVar(value=deck)
         root.protocol('WM_DELETE_WINDOW', quit)
         root.resizable(height=False, width=False)
         width = kwargs['width']
         height = kwargs['height']
         self.root.wm_geometry('%dx%d-10+10'%(width,height))
         root.title("Napoleon at St. Helena Solitaire")
-        
+        self.menu = tk.Menu(root)         # parent constructs actual menu         
+        root.config(menu=self.menu)                         
         status = self.makeStatus()
         canvas = self.canvas = tk.Canvas(root, bg=BACKGROUND, cursor=DEFAULT_CURSOR, **kwargs)
         status.pack(expand=tk.NO, fill = tk.X, side=tk.BOTTOM)
@@ -199,13 +202,13 @@ class View:
 
     def loadImages(self):
         PhotoImage = tk.PhotoImage
-        cardDir = os.path.join(os.path.dirname(sys.argv[0]), 'cards') 
-        blue = PhotoImage(file=os.path.join(cardDir,'blueBackVert.gif'))
-        red = PhotoImage(file=os.path.join(cardDir,'redBackVert.gif'))
+        deck = self.deck.get()
+        blue = PhotoImage(file=os.path.join(deck,'blueBackVert.gif'))
+        red = PhotoImage(file=os.path.join(deck,'redBackVert.gif'))
         imageDict['blue'] = blue
         imageDict['red'] = red    
         for rank, suit in itertools.product(ALLRANKS, SUITNAMES):
-            face = PhotoImage(file = os.path.join(cardDir, suit+RANKNAMES[rank]+'.gif'))               
+            face = PhotoImage(file = os.path.join(deck, suit+RANKNAMES[rank]+'.gif'))               
             imageDict[rank, suit] = face
 
     def createCards(self):

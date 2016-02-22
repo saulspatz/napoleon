@@ -3,6 +3,7 @@
 from model import Model
 from view import View
 import tkinter as tk
+import os, sys
 
 helpText = '''
 OBJECTIVE
@@ -47,6 +48,8 @@ empty tableau piles, the app would allow you to move all four cards onto the \
 9 of Diamonds at the top of another tableau pile.
 '''
 
+CARD_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'decks')
+DEFAULT_DECK = os.path.join(CARD_DIR, 'small')
 class Napoleon:
     def __init__(self):
         try:
@@ -54,11 +57,13 @@ class Napoleon:
                 text = infile.readlines()
                 games = int(text[0].strip())
                 wins = int(text[1].strip())
+                deck = text[2].strip()
         except IOError:
-            games, wins = 0,0
+            games,wins,deck = 0,0, DEFAULT_DECK
         self.model = Model(games, wins)
-        self.view = View(self, self.quit, width=950, height=1000)
+        self.view = View(self, self.quit, deck, width=950, height=1000)
         self.makeHelp()
+        self.makeMenu()
         self.view.start()      #  start the event loop
 
     def makeHelp(self):
@@ -92,6 +97,18 @@ class Napoleon:
         games, wins = model.games, model.wins
         with open('napoleon.ini', 'w') as outfile:
             outfile.write('%d\n%d\n'%(games, wins))
+            outfile.write('%s\n'%self.view.deck.get())
+            
+    def makeMenu(self):
+        top = self.view.menu
+        options = tk.Menu(top, tearoff=False)    
+        for deck in os.listdir(CARD_DIR):
+            if deck.startswith('.'): continue
+            options.add_radiobutton(
+                label=deck,
+                value=os.path.join(CARD_DIR,deck),
+                variable=self.view.deck)
+        top.add_cascade(label='Deck', menu=options)
 
     def quit(self):
         self.saveStats()
