@@ -307,9 +307,11 @@ class Model:
     def completeMove(self, dest):
         '''
         Compete a legal move.
-        Transfer the moving cards to the destination stack.
+        Remove the transferred cards from the source stack.
+        (Cards have already been transfered to the destination stack by target.drop,
+        called in self.canDrop)
         Turn the top card of the stock face up, if need be.
-        Chack for win
+        Check for win
         '''
         source = self.moveOrigin
         source[:] = source[:self.moveIndex]
@@ -317,7 +319,7 @@ class Model:
         self.selection = []
         if self.win():
             self.wins += 1
-
+        
     def flipTop(self):
         '''
         Turn the top card of stock face up
