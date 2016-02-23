@@ -57,10 +57,11 @@ class Napoleon:
                 text = infile.readlines()
                 games = int(text[0].strip())
                 wins = int(text[1].strip())
-                deck = text[2].strip()
+                first = int(text[2].strip())
+                deck = text[3].strip()
         except IOError:
-            games,wins,deck = 0,0, DEFAULT_DECK
-        self.model = Model(games, wins)
+            games,wins,first,deck = 0,0,0,DEFAULT_DECK
+        self.model = Model(games, wins, first)
         self.view = View(self, self.quit, deck, width=950, height=1000)
         self.makeHelp()
         self.makeMenu()
@@ -94,9 +95,9 @@ class Napoleon:
         
     def saveStats(self):
         model = self.model
-        games, wins = model.games, model.wins
+        games, wins, first = model.games, model.wins, model.first
         with open('napoleon.ini', 'w') as outfile:
-            outfile.write('%d\n%d\n'%(games, wins))
+            outfile.write('%d\n%d\n%d\n'%(games, wins, first))
             outfile.write('%s\n'%self.view.deck.get())
             
     def makeMenu(self):

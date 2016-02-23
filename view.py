@@ -134,6 +134,8 @@ class View:
                                      relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
         self.wins = tk.Label(status, 
                                      relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
+        self.first = tk.Label(status, 
+                                             relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)        
         self.passNumber =   tk.Label(status, 
                                      relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
         self.tableauCards =  tk.Label(status, 
@@ -145,7 +147,8 @@ class View:
         self.stockCards = tk.Label(status, 
                                    relief = tk.RIDGE, font = STATUS_FONT, bg = STATUS_BG, fg = 'Black', bd = 2)
         self.games.pack(expand=tk.NO, fill = tk.NONE, side = tk.LEFT) 
-        self.wins.pack(expand=tk.NO, fill = tk.NONE, side = tk.LEFT)  
+        self.wins.pack(expand=tk.NO, fill = tk.NONE, side = tk.LEFT) 
+        self.first.pack(expand=tk.NO, fill = tk.NONE, side = tk.LEFT)  
         self.passNumber.pack(expand=tk.NO, fill = tk.NONE, side = tk.RIGHT)
         self.tableauCards.pack(expand=tk.NO, fill = tk.NONE, side = tk.RIGHT)
         self.foundationCards.pack(expand=tk.NO, fill = tk.NONE, side = tk.RIGHT)
@@ -183,6 +186,9 @@ class View:
         canvas.create_text(width//2, height//2, text = "YOU WIN",
                            fill = BACKGROUND, font=("Helvetica", "64", "bold"), 
                            tag = 'winText', anchor=tk.CENTER)
+        canvas.create_text(width//2, height//4, text = "YOU WIN ON FIRST PASS",
+                                   fill = BACKGROUND, font=("Helvetica", "64", "bold"), 
+                                   tag = 'pass1Text', anchor=tk.CENTER)        
         canvas.create_text(width//2 , self.waste[1] + MARGIN,
                            text = 'No More Moves.  Game Over.',
                            fill = BACKGROUND, font = ('Helvetica', '32', 'bold'),
@@ -190,7 +196,7 @@ class View:
         
     def hideMessages(self):
         canvas =self.canvas
-        for tag in ('winText','gameOver'):
+        for tag in ('winText','gameOver', 'pass1Text'):
             canvas.itemconfigure(tag, fill = BACKGROUND)
             canvas.tag_lower(tag, 'all')
     
@@ -241,7 +247,8 @@ class View:
     def showStatus(self):
         model = self.model
         self.games.configure(text='Games %d'%model.games)
-        self.wins.configure(text='Wins %d'%model.wins)
+        self.wins.configure(text='Total Wins %d'%model.wins)
+        self.first.configure(text='One Pass Wins %d'%model.first)
         self.passNumber.configure(text='Pass %d'%model.passNumber)
         self.wasteCards.configure(text='Waste %d'%len(model.waste))
         self.tableauCards.configure(text='Tableau %d'%sum(len(t) for t in model.tableau))
@@ -249,13 +256,16 @@ class View:
         self.foundationCards.configure(text='Foundation %d'%sum(len(f) for f in model.foundations))                
 
     def show(self):
+        model = self.model
         self.showStock()
         self.showTableaux()
         self.showFoundations()
         self.showWaste()
-        if self.model.win():
-            self.showMessage('winText')
-        elif self.model.gameOver():
+        if model.win():
+            tag = 'winText' if model.passNumber == 2 else 'pass1Text' 
+            self.showMessage(tag)
+            self.activateStock(False)
+        elif model.gameOver():
             self.showMessage('gameOver')
         self.showStatus()
 

@@ -216,8 +216,8 @@ class Model:
     The top card of the stock is face-up and available for play.  
 
       '''
-    def __init__(self, games, wins):
-        self.games, self.wins = games, wins
+    def __init__(self, games, wins, first):
+        self.games, self.wins, self.first = games, wins, first
         random.seed()
         self.deck = []
         self.selection = []
@@ -319,6 +319,8 @@ class Model:
         self.selection = []
         if self.win():
             self.wins += 1
+            if self.passNumber == 1:
+                self.first += 1
         
     def flipTop(self):
         '''
