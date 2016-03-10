@@ -14,10 +14,10 @@ from model import SUITNAMES, RANKNAMES, ALLRANKS, Card
 # OFFSET is the offset used for displaying the
 # a card to the right of another in the tableau.
 
-CARDWIDTH = 71
-CARDHEIGHT = 96
+CARDWIDTH = 75
+CARDHEIGHT = 112
 MARGIN = 10
-OFFSET = 15
+OFFSET = 17
 
 BACKGROUND = '#070'
 OUTLINE = 'orange'        # outline color of piles
@@ -209,8 +209,8 @@ class View:
     def loadImages(self):
         PhotoImage = tk.PhotoImage
         deck = self.deck.get()
-        blue = PhotoImage(file=os.path.join(deck,'blueBackVert.gif'))
-        red = PhotoImage(file=os.path.join(deck,'redBackVert.gif'))
+        blue = PhotoImage(file=os.path.join(deck,'blueBack.gif'))
+        red = PhotoImage(file=os.path.join(deck,'redBack.gif'))
         imageDict['blue'] = blue
         imageDict['red'] = red    
         for rank, suit in itertools.product(ALLRANKS, SUITNAMES):
