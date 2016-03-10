@@ -49,7 +49,7 @@ empty tableau piles, the app would allow you to move all four cards onto the \
 '''
 
 CARD_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'decks')
-DEFAULT_DECK = os.path.join(CARD_DIR, 'small')
+DEFAULT_DECK = os.path.join(CARD_DIR, 'jumbo4GIF')
 class Napoleon:
     def __init__(self):
         try:
