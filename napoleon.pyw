@@ -49,16 +49,17 @@ empty tableau piles, the app would allow you to move all four cards onto the \
 '''
 
 CARD_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'decks')
-DEFAULT_DECK = os.path.join(CARD_DIR, 'jumbo4GIF')
+DEFAULT_DECK = os.path.join(CARD_DIR, 'jumbo2VERTGIF')
 class Napoleon:
     def __init__(self):
         try:
-            with open('napoleon.ini') as infile:
+            dirname = os.path.dirname(sys.argv[0])
+            with open(os.path.join(dirname, 'napoleon.ini')) as infile:
                 text = infile.readlines()
                 games = int(text[0].strip())
                 wins = int(text[1].strip())
                 first = int(text[2].strip())
-                deck = text[3].strip()
+                deck = os.path.join(dirname,text[3].strip())
         except IOError:
             games,wins,first,deck = 0,0,0,DEFAULT_DECK
         self.model = Model(games, wins, first)
